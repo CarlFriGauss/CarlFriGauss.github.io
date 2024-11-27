@@ -1,7 +1,7 @@
 ---
 permalink: /
 title: "
-welcome to Carl Friedrich Gauss website"
+Welcome to Carl Friedrich Gauss's Website"
 author_profile: true
 redirect_from: 
   - /about/
