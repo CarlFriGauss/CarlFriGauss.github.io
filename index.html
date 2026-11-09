@@ -43,7 +43,7 @@
     .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
     .site-logo{
       width:64px;height:64px;border-radius:50%;
-      object-fit:cover;
+      object-fit:cover; object-position:50% 28%;
       box-shadow:0 6px 20px rgba(11,11,11,0.08);
       border: 2px solid var(--card);
     }
@@ -100,7 +100,7 @@
     
     <header>
       <div class="brand">
-        <img src="assets/profile_photo.png" alt="Carl Friedrich Gauss" class="site-logo" />
+        <img src="assets/gauss-portrait.jpg" alt="Portrait of Carl Friedrich Gauss" class="site-logo" />
         <div>
             <h1 class="site-title">Carl Friedrich Gauss</h1>
             <div style="font-size: 14px; color: var(--muted);">Researcher · Python · Math</div>
@@ -108,7 +108,7 @@
       </div>
 
       <nav class="social-links">
-        <a href="https://www.youtube.com/@Carl Friedrich Gauss" target="_blank" aria-label="YouTube">
+        <a href="https://github.com/CarlFriGauss" target="_blank" aria-label="GitHub profile">
           <svg class="social-icon" viewBox="0 0 24 24">
             <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
           </svg>
@@ -140,7 +140,7 @@
             <div class="card">
                 <div class="meta">Latest Update</div>
                 <h3>Gaussian Process Visualizer v1.0</h3>
-                <p class="excerpt">A new interactive tool to understand GP posteriors is now live.</p>
+                <p class="excerpt">Explore the Python source for the Gaussian Process visualizer.</p>
                 <br>
                 <button class="btn" onclick="switchTab('cool-stuff')">Try it out →</button>
             </div>
@@ -155,8 +155,8 @@
                     Visualize how the Gaussian Process posterior updates in real-time.
                 </p>
                 <div style="margin-top: 15px;">
-                    <a href="https://CarlFriGaussappio-awj9hppdf8wzcgzqzmapzu.streamlit.app/" target="_blank" class="btn">
-                        Launch App 🚀
+                    <a href="GaussianProcess/GPapp.py" target="_blank" class="btn">
+                        View Python source
                     </a>
                 </div>
             </div>
@@ -170,9 +170,9 @@
         <div id="tab-videos" class="tab-content" style="display:none;">
             <div class="card">
                 <h3>YouTube Content</h3>
-                <p class="excerpt">Subscribe to my channel for the latest tutorials and visualizations.</p>
+                <p class="excerpt">Educational videos are being prepared. Explore the public projects in the meantime.</p>
                 <br>
-                <a href="https://www.youtube.com/@Carl Friedrich Gauss" target="_blank" class="btn">Go to Channel</a>
+                <a href="https://github.com/CarlFriGauss" target="_blank" class="btn">View public projects</a>
             </div>
         </div>
 
