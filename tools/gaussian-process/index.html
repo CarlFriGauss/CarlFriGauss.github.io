@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="description" content="Explore Gaussian process regression in your browser. Add observations, adjust the kernel, and examine the posterior mean and uncertainty.">
+  <title>Gaussian Process Explorer — Carl Friedrich Gauss</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the explorer</a>
+  <div class="wrap">
+    <header class="page-header">
+      <a class="brand" href="../../">Carl Friedrich Gauss</a>
+      <a href="../../">← Back to the website</a>
+    </header>
+    <main id="main">
+      <p class="eyebrow">An interactive mathematics tool</p>
+      <h1>Gaussian Process Explorer</h1>
+      <p class="intro">A few observations. A family of possible functions. Explore how assumptions about smoothness and noise shape what we can infer.</p>
+      <p class="privacy-note">Calculations run in this browser. Your points stay in this page’s memory and clear when you reload.</p>
+      <noscript><p class="notice">This interactive tool needs JavaScript. You can still <a href="../../GaussianProcess/GPapp.py">read the original Python source</a>.</p></noscript>
+      <p id="load-message">Loading the explorer…</p>
+
+      <div class="explorer">
+        <section class="controls panel" aria-label="Model controls">
+          <fieldset>
+            <legend>Kernel &amp; noise</legend>
+            <div class="parameter">
+              <label for="length-scale">Length scale <output id="length-value" for="length-scale">1.00</output></label>
+              <input id="length-scale" type="range" min="0.1" max="5" step="0.05" value="1" aria-describedby="length-help">
+              <p id="length-help" class="hint">Larger values make nearby function values more strongly correlated.</p>
+            </div>
+            <div class="parameter">
+              <label for="signal-std">Signal standard deviation <output id="signal-value" for="signal-std">1.00</output></label>
+              <input id="signal-std" type="range" min="0.1" max="3" step="0.05" value="1" aria-describedby="signal-help">
+              <p id="signal-help" class="hint">Sets the prior’s vertical scale before seeing observations.</p>
+            </div>
+            <div class="parameter">
+              <label for="noise-std">Observation noise standard deviation <output id="noise-value" for="noise-std">0.15</output></label>
+              <input id="noise-std" type="range" min="0" max="2" step="0.01" value="0.15" aria-describedby="noise-help">
+              <p id="noise-help" class="hint">Larger values allow more difference between an observation and the underlying function.</p>
+            </div>
+          </fieldset>
+
+          <form id="observation-form">
+            <fieldset>
+              <legend>Add an observation</legend>
+              <p id="entry-help" class="hint">Use these fields with a keyboard, or click inside the plot. Up to 40 points.</p>
+              <div class="coordinate-fields">
+                <label for="point-x">x <input id="point-x" type="number" min="-5" max="5" step="any" value="0" required aria-describedby="entry-help"></label>
+                <label for="point-y">y <input id="point-y" type="number" min="-10" max="10" step="any" value="1" required aria-describedby="entry-help"></label>
+              </div>
+              <p class="hint">x: −5 to 5 · y: −10 to 10</p>
+              <button id="add-point" type="submit">Add point</button>
+            </fieldset>
+          </form>
+          <div class="button-row">
+            <button id="example" class="secondary" type="button">Load example</button>
+            <button id="reset" class="secondary" type="button">Reset to prior</button>
+          </div>
+          <p class="hint">Reset clears all points and restores the default parameters.</p>
+          <p id="action-status" class="action-status" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="results" aria-label="Gaussian process results">
+          <div class="panel plot-panel">
+            <div class="plot-heading"><h2 id="plot-heading">Posterior</h2><span id="observation-count">5 / 40 observations</span></div>
+            <p id="plot-help" class="hint">Click to add a point; click an existing point to remove it. The observation table offers the same removal controls.</p>
+            <div id="plot-container"><svg id="plot" role="img" aria-labelledby="chart-title chart-description" viewBox="0 0 720 400"><title id="chart-title">Gaussian process posterior</title><desc id="chart-description">A curve and an uncertainty interval. Numerical results are also available in the table below.</desc></svg></div>
+            <ul class="legend" aria-label="Plot legend"><li><span class="key mean-key"></span>Mean of f</li><li><span class="key band-key"></span>95% pointwise interval for f</li><li><span class="key point-key"></span>Observations</li></ul>
+            <p class="hint interval-note">The shaded region is mean ± 1.96 standard deviations for the latent function <i>f</i>, at each x. It excludes future observation noise and is not a simultaneous band for the entire function.</p>
+          </div>
+          <p id="model-summary" class="model-summary" role="status" aria-live="polite" aria-atomic="true"></p>
+
+          <details class="panel data-panel">
+            <summary>Observation data &amp; removal controls</summary>
+            <div class="table-scroll"><table><caption>Your current observations</caption><thead><tr><th scope="col">Point</th><th scope="col">x</th><th scope="col">y</th><th scope="col">Action</th></tr></thead><tbody id="observation-rows"></tbody></table></div>
+          </details>
+          <details class="panel data-panel">
+            <summary>Numerical posterior values</summary>
+            <div class="table-scroll"><table><caption>Latent function f at eleven locations; 95% pointwise intervals</caption><thead><tr><th scope="col">x</th><th scope="col">Mean</th><th scope="col">Lower</th><th scope="col">Upper</th></tr></thead><tbody id="posterior-rows"></tbody></table></div>
+          </details>
+        </section>
+      </div>
+
+      <details class="panel explanation">
+        <summary>The model behind the picture</summary>
+        <p>This is a zero-mean Gaussian process with a squared-exponential (RBF) kernel:</p>
+        <p class="formula">k(x, x′) = σ<sub>f</sub>² exp(−(x − x′)² / (2ℓ²))</p>
+        <p>Here ℓ is the length scale and σ<sub>f</sub> is the signal standard deviation. Observations follow y = f(x) + ε, with independent Gaussian noise of standard deviation σ<sub>n</sub>. The training covariance adds σ<sub>n</sub>² to its diagonal. Parameters are chosen by you rather than fitted automatically.</p>
+        <p>Repeated inputs at zero noise may need a small numerical regularization, which is reported below the plot. For conflicting observations at the same x, a positive noise level is a more appropriate model.</p>
+        <p>The browser version is self-contained and accepts points directly. The <a href="../../GaussianProcess/GPapp.py">original Python application source</a> remains available separately.</p>
+      </details>
+    </main>
+    <footer><a href="../../">Carl Friedrich Gauss</a><span>Mathematics, made explorable.</span></footer>
+  </div>
+</body>
+</html>
