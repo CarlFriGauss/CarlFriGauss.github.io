@@ -1,0 +1,11 @@
+{
+  "name": "gauss-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tools/gaussian-process/gp.test.mjs"
+  },
+  "engines": { "node": ">=22" }
+}

@@ -58,7 +58,7 @@ function draw(current) {
   const fragment = document.createDocumentFragment();
   fragment.append(
     svgElement('title', { id: 'chart-title' }, `${points.length ? 'Posterior' : 'Prior'} of a Gaussian process`),
-    svgElement('desc', { id: 'chart-description' }, 'Blue line: mean of the latent function. Shading: its 95% pointwise interval. Dark points: observations. Equivalent numerical results and removal controls are in the tables below. Use the x and y fields to add points with a keyboard.'),
+    svgElement('desc', { id: 'chart-description' }, 'Teal line: mean of the latent function. Shading: its 95% pointwise interval. Dark points: observations. Equivalent numerical results and removal controls are in the tables below. Use the x and y fields to add points with a keyboard.'),
   );
   const defs = svgElement('defs');
   const clip = svgElement('clipPath', { id: 'plot-area-clip' });
