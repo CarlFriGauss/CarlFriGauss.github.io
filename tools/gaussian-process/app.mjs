@@ -1,4 +1,5 @@
 import { posterior, sampleFunctions, DEFAULT_PARAMETERS, MAX_OBSERVATIONS, X_LIMIT, Y_LIMIT } from './gp.mjs';
+import { plotExtent, relativeDensity, DENSITY_TAIL } from './plot.mjs';
 
 const byId = id => document.getElementById(id);
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -8,7 +9,6 @@ let points = [];
 let model = null;
 let samples = [];
 let sampleSeed = 42;
-let viewExtent = 3;
 let geometry = null;
 let pendingFrame = null;
 let calculationFailed = false;
@@ -49,11 +49,7 @@ function draw(current) {
   const width = Math.max(260, Math.round(byId('plot-container').getBoundingClientRect().width));
   const height = width < 520 ? 340 : 460;
   const left = 58, right = width - 15, top = 18, bottom = height - 43;
-  // Keep coordinates fixed while clicking, so observations stay under the pointer.
-  // Expand only for a larger signal scale or a manually entered out-of-view point.
-  viewExtent = Math.min(Y_LIMIT, Math.max(viewExtent, current.parameters.signalStd * 3,
-    ...points.map(point => Math.abs(point.y) > viewExtent ? Math.abs(point.y) * 1.1 : 0)));
-  const extent = viewExtent;
+  const extent = plotExtent(current, points, samples);
   const x = value => left + (value + X_LIMIT) / (2 * X_LIMIT) * (right - left);
   const y = value => top + (extent - value) / (2 * extent) * (bottom - top);
   geometry = { width, height, left, right, top, bottom, extent };
@@ -64,7 +60,7 @@ function draw(current) {
   const fragment = document.createDocumentFragment();
   fragment.append(
     svgElement('title', { id: 'chart-title' }, `${points.length ? 'Posterior' : 'Prior'} of a Gaussian process`),
-    svgElement('desc', { id: 'chart-description' }, 'Click or tap this plot to add observations and condition the displayed functions. Thin curves: sampled functions. Thick teal line: mean of the latent function. Shading: its 95% pointwise interval. Dark points: observations. Use the x and y fields to add points with a keyboard; numerical results and removal controls are in the tables below.'),
+    svgElement('desc', { id: 'chart-description' }, 'Click or tap this plot to add observations and condition the displayed functions. The vertical axis automatically fits every displayed curve. Thin curves: sampled functions. Thick teal line: mean of the latent function. Green shading: Gaussian density relative to its peak at each x, darker near the mean. Thin dashed lines: the 95% pointwise interval. Dark points: observations. Use the x and y fields to add points with a keyboard; numerical results and removal controls are in the tables below.'),
   );
   const defs = svgElement('defs');
   const clip = svgElement('clipPath', { id: 'plot-area-clip' });
@@ -89,8 +85,26 @@ function draw(current) {
     if (reverse) indices.reverse();
     return indices.map(index => `${x(current.x[index]).toFixed(2)},${y(values[index]).toFixed(2)}`);
   };
-  const upper = coordinates(current.upper), lower = coordinates(current.lower, true);
-  marks.append(svgElement('path', { d: `M${upper.join(' L')} L${lower.join(' L')} Z`, class: 'interval' }));
+  const deviations = current.variance.map(Math.sqrt);
+  const density = svgElement('g', { class: 'density-shading', 'aria-hidden': 'true' });
+  // Adjacent ribbons follow the mean and standard deviation across x. Their
+  // intensity is the Gaussian density divided by its peak: exp(-z² / 2).
+  // This removes the 1/(sigma sqrt(2 pi)) factor for visibility, as labelled.
+  const bands = 84;
+  for (let band = 0; band < bands; band++) {
+    const lowZ = -DENSITY_TAIL + 2 * DENSITY_TAIL * band / bands;
+    const highZ = -DENSITY_TAIL + 2 * DENSITY_TAIL * (band + 1) / bands;
+    const low = current.mean.map((mean, index) => mean + lowZ * deviations[index]);
+    const high = current.mean.map((mean, index) => mean + highZ * deviations[index]);
+    density.append(svgElement('path', {
+      d: `M${coordinates(high).join(' L')} L${coordinates(low, true).join(' L')} Z`,
+      class: 'density-band', 'fill-opacity': (0.38 * relativeDensity((lowZ + highZ) / 2)).toFixed(5),
+    }));
+  }
+  marks.append(density);
+  for (const bound of [current.lower, current.upper]) {
+    marks.append(svgElement('path', { d: `M${coordinates(bound).join(' L')}`, class: 'interval-boundary' }));
+  }
   if (byId('show-samples').checked) {
     for (const [index, values] of samples.entries()) {
       marks.append(svgElement('path', { d: `M${coordinates(values).join(' L')}`, class: `sample-function sample-color-${index % 4}` }));
@@ -244,10 +258,10 @@ function defaults() {
 }
 
 byId('reset').addEventListener('click', () => {
-  points = []; viewExtent = 3; defaults(); render(); setStatus('Prior restored. All observations cleared; default parameters restored.');
+  points = []; defaults(); render(); setStatus('Prior restored. All observations cleared; default parameters restored.');
 });
 byId('example').addEventListener('click', () => {
-  points = example.map(point => ({ ...point })); viewExtent = 3; defaults(); render(); setStatus('Loaded five example observations and the default parameters.');
+  points = example.map(point => ({ ...point })); defaults(); render(); setStatus('Loaded five example observations and the default parameters.');
 });
 
 new ResizeObserver(() => { if (model) draw(model); }).observe(byId('plot-container'));

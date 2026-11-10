@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { posterior, sampleFunctions, observationCovariance, rbfKernel, MAX_OBSERVATIONS } from './gp.mjs';
+import { plotExtent, relativeDensity, DENSITY_TAIL } from './plot.mjs';
 
 function close(actual, expected, tolerance = 1e-10) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} differs from ${expected}`);
@@ -128,4 +129,42 @@ test('sample generation validates bounds and permits an empty query grid', () =>
   assert.throws(() => sampleFunctions([], Array(402).fill(0)));
   assert.throws(() => sampleFunctions([{ x: 6, y: 0 }], [0]));
   assert.deepEqual(sampleFunctions([], [], {}, { count: 2 }), [[], []]);
+});
+
+test('automatic plot range includes posterior excursions, intervals, and every displayed sample', () => {
+  const points = [{ x: -3.6, y: 1.8 }, { x: -2.6, y: -2.4 }, { x: -2, y: 0.05 }, { x: 1.4, y: 2.3 }, { x: 1.7, y: -1.6 }];
+  const query = Array.from({ length: 321 }, (_, index) => -5 + index / 32);
+  for (const parameters of [{}, { lengthScale: 5, noiseStd: 0.01 }, { signalStd: 3, noiseStd: 0 }]) {
+    const model = posterior(points, query, parameters);
+    const draws = sampleFunctions(points, query, parameters, { count: 30 });
+    const extent = plotExtent(model, points, draws);
+    for (const values of [model.mean, model.lower, model.upper, points.map(point => point.y), ...draws]) {
+      assert.ok(values.every(value => Math.abs(value) < extent), 'All plotted data must fit inside the axes');
+    }
+    for (let index = 0; index < query.length; index++) {
+      const tail = DENSITY_TAIL * Math.sqrt(model.variance[index]);
+      assert.ok(Math.abs(model.mean[index]) + tail < extent);
+    }
+    assert.ok(extent > 3, 'The old fixed range cannot contain this regression case');
+  }
+});
+
+test('display limits follow visible samples and can exceed observation entry limits', () => {
+  const model = posterior([], [-1, 0, 1]);
+  const usualExtent = plotExtent(model);
+  const sampleExtent = plotExtent(model, [], [[0, -25, 1]]);
+  assert.ok(sampleExtent > 25 && sampleExtent < 30, 'The full sample has modest headroom');
+  assert.ok(plotExtent(model, [{ x: 0, y: 10 }]) > 10);
+  assert.equal(plotExtent(model), usualExtent, 'Removing extreme displayed curves lets the range contract');
+});
+
+test('relative density is symmetric, peaks at the mean, and follows the Gaussian shape', () => {
+  assert.equal(relativeDensity(0), 1);
+  close(relativeDensity(1), Math.exp(-0.5));
+  close(relativeDensity(1.96), Math.exp(-0.5 * 1.96 ** 2));
+  assert.equal(relativeDensity(-2), relativeDensity(2));
+  assert.ok(relativeDensity(0) > relativeDensity(1) && relativeDensity(1) > relativeDensity(2));
+  assert.ok(relativeDensity(DENSITY_TAIL) < 0.003);
+  const noiseless = posterior([{ x: 0, y: 1 }], [0], { noiseStd: 0 });
+  assert.ok(Number.isFinite(plotExtent(noiseless)), 'A collapsed density still has a finite display range');
 });

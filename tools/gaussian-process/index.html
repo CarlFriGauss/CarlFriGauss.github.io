@@ -28,9 +28,9 @@
         <section class="results" aria-label="Gaussian process results">
           <div class="panel plot-panel">
             <div class="plot-heading"><h2 id="plot-heading">Prior</h2><span id="observation-count">0 / 40 observations</span></div>
-            <p id="plot-help" class="hint">Click or tap anywhere inside the axes to add a point. Click an existing point to remove it.</p>
+            <p id="plot-help" class="hint">Click or tap inside the axes to add a point; click an existing point to remove it. The axes automatically fit all displayed functions.</p>
             <div id="plot-container"><svg id="plot" role="img" aria-labelledby="chart-title chart-description" aria-describedby="plot-help" viewBox="0 0 720 460"><title id="chart-title">Gaussian process prior</title><desc id="chart-description">Sampled functions, their mean, uncertainty, and your observations share this interactive plot. Keyboard entry and numerical results are also available below.</desc></svg></div>
-            <ul class="legend" aria-label="Plot legend"><li id="sample-key"><span class="key sample-key"></span><span id="sample-state">Samples from the prior</span></li><li><span class="key mean-key"></span>Mean of f</li><li><span class="key band-key"></span>95% pointwise interval for f</li><li><span class="key point-key"></span>Observations</li></ul>
+            <ul class="legend" aria-label="Plot legend"><li id="sample-key"><span class="key sample-key"></span><span id="sample-state">Samples from the prior</span></li><li><span class="key mean-key"></span>Mean of f</li><li><span class="key density-key"></span>Relative density of f</li><li><span class="key band-key"></span>95% pointwise interval for f</li><li><span class="key point-key"></span>Observations</li></ul>
             <div class="plot-toolbar">
               <label class="sample-toggle"><input id="show-samples" type="checkbox" checked> Show sampled functions</label>
               <label class="sample-count" for="sample-count">Functions <output id="sample-value" for="sample-count">8</output><input id="sample-count" type="range" min="1" max="30" step="1" value="8"></label>
@@ -40,7 +40,7 @@
             </div>
             <p class="hint" id="reset-help">Reset clears all observations and restores the default model parameters.</p>
             <p id="action-status" class="action-status" role="status" aria-live="polite"></p>
-            <p class="hint interval-note">The shaded region is mean ± 1.96 standard deviations for the latent function <i>f</i>, at each x. It excludes future observation noise and is not a simultaneous band for the entire function.</p>
+            <p class="hint interval-note">Green shading shows the Gaussian density relative to its peak at each x: darker near the mean, lighter in the tails. Thin dashed lines mark mean ± 1.96 standard deviations for the latent function <i>f</i> (the 95% pointwise interval). This excludes future observation noise and is not a simultaneous band for the entire function.</p>
           </div>
           <p id="model-summary" class="model-summary" role="status" aria-live="polite" aria-atomic="true"></p>
 
