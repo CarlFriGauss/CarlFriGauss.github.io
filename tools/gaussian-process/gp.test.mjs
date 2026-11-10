@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { posterior, observationCovariance, rbfKernel, MAX_OBSERVATIONS } from './gp.mjs';
+import { posterior, sampleFunctions, observationCovariance, rbfKernel, MAX_OBSERVATIONS } from './gp.mjs';
 
 function close(actual, expected, tolerance = 1e-10) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} differs from ${expected}`);
@@ -76,4 +76,56 @@ test('invalid, non-finite, out-of-range, and oversized inputs are rejected', () 
   assert.throws(() => posterior([{ x: 6, y: 0 }], [0]));
   assert.throws(() => posterior([], [0], { lengthScale: 0 }));
   assert.throws(() => posterior([], [0], { noiseStd: -1 }));
+});
+
+test('sampled functions are reproducible and conditioning responds to the observation', () => {
+  const query = [-1, 0, 1];
+  const options = { noiseStd: 0.2 };
+  const first = sampleFunctions([{ x: 0, y: 1 }], query, options);
+  assert.deepEqual(first, sampleFunctions([{ x: 0, y: 1 }], query, options));
+  assert.notDeepEqual(first, sampleFunctions([{ x: 0, y: 1 }], query, options, { seed: 43 }));
+  const shifted = sampleFunctions([{ x: 0, y: 2 }], query, options);
+  for (let sample = 0; sample < first.length; sample++) {
+    for (let index = 0; index < query.length; index++) {
+      close(shifted[sample][index] - first[sample][index], rbfKernel(query[index], 0) / 1.04);
+    }
+  }
+});
+
+test('noiseless sampled functions interpolate observations and handle repeated locations', () => {
+  const points = [{ x: -1, y: 1.5 }, { x: 0, y: -0.4 }, { x: 0, y: -0.4 }];
+  const draws = sampleFunctions(points, [-1, 0, 0, 1], { noiseStd: 0 });
+  for (const values of draws) {
+    assert.ok(values.every(Number.isFinite));
+    close(values[0], 1.5, 1e-4);
+    close(values[1], -0.4, 1e-4);
+    close(values[2], -0.4, 1e-4);
+  }
+});
+
+test('joint samples reproduce analytic prior and posterior means, variances, and covariance', () => {
+  for (const points of [[], [{ x: 0, y: 1.2 }]]) {
+    const query = [0, 1];
+    const options = { noiseStd: 0.5 };
+    const expected = posterior(points, query, options);
+    const draws = Array.from({ length: 200 }, (_, seed) => sampleFunctions(points, query, options, { count: 30, seed })).flat();
+    const means = query.map((_, index) => draws.reduce((sum, values) => sum + values[index], 0) / draws.length);
+    for (const index of [0, 1]) {
+      close(means[index], expected.mean[index], 0.04);
+      const variance = draws.reduce((sum, values) => sum + (values[index] - means[index]) ** 2, 0) / draws.length;
+      close(variance, expected.variance[index], 0.05);
+    }
+    const covariance = draws.reduce((sum, values) => sum + (values[0] - means[0]) * (values[1] - means[1]), 0) / draws.length;
+    const priorCross = Math.exp(-0.5);
+    close(covariance, priorCross - (points.length ? priorCross / 1.25 : 0), 0.05);
+  }
+});
+
+test('sample generation validates bounds and permits an empty query grid', () => {
+  for (const count of [0, 31, 1.5, NaN]) assert.throws(() => sampleFunctions([], [0], {}, { count }));
+  for (const seed of [-1, 2 ** 32, 1.5, NaN]) assert.throws(() => sampleFunctions([], [0], {}, { seed }));
+  assert.throws(() => sampleFunctions([], [Infinity]));
+  assert.throws(() => sampleFunctions([], Array(402).fill(0)));
+  assert.throws(() => sampleFunctions([{ x: 6, y: 0 }], [0]));
+  assert.deepEqual(sampleFunctions([], [], {}, { count: 2 }), [[], []]);
 });

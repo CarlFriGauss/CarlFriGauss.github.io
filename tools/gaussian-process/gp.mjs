@@ -132,3 +132,50 @@ export function posterior(points, queryX, parameters = {}) {
   }
   return { x: [...queryX], mean, variance, lower, upper, jitter: factor?.jitter ?? 0, parameters: options };
 }
+
+function normalGenerator(seed) {
+  let state = seed >>> 0;
+  const uniform = () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = Math.imul(state ^ (state >>> 15), state | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+  return () => Math.sqrt(-2 * Math.log(1 - uniform())) * Math.cos(2 * Math.PI * uniform());
+}
+
+// Matheron's rule: condition joint prior draws using the same covariance solve
+// as regression. Keeping the seed fixes the underlying draws as points are added.
+export function sampleFunctions(points, queryX, parameters = {}, { count = 8, seed = 42 } = {}) {
+  validateObservations(points);
+  const options = validateParameters(parameters);
+  if (!Array.isArray(queryX) || queryX.length > MAX_QUERIES) {
+    throw new RangeError(`Use at most ${MAX_QUERIES} query locations.`);
+  }
+  for (const x of queryX) finiteWithin(x, -X_LIMIT, X_LIMIT, 'Query x');
+  if (!Number.isInteger(count) || count < 1 || count > 30) throw new RangeError('Use between 1 and 30 sampled functions.');
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) throw new RangeError('Use a 32-bit unsigned seed.');
+  if (!queryX.length) return Array.from({ length: count }, () => []);
+
+  // Query locations come first, so adding observations preserves their prior draws.
+  const locations = [...queryX, ...points.map(point => point.x)];
+  const joint = factorWithJitter(locations.map(x => locations.map(other => kernel(x, other, options))));
+  const training = points.length ? factorWithJitter(observationCovariance(points, options)) : null;
+  const cross = queryX.map(x => points.map(point => kernel(x, point.x, options)));
+  return Array.from({ length: count }, (_, sampleIndex) => {
+    const pathSeed = (seed + Math.imul(sampleIndex, 0x9e3779b9)) >>> 0;
+    const normal = normalGenerator(pathSeed);
+    const noise = normalGenerator(pathSeed ^ 0x85ebca6b);
+    const z = locations.map(() => normal());
+    const prior = joint.lower.map((row, index) => {
+      let value = 0;
+      for (let column = 0; column <= index; column += 1) value += row[column] * z[column];
+      return value;
+    });
+    if (!training) return prior;
+    const residual = points.map((point, index) => point.y - prior[queryX.length + index]
+      - Math.sqrt(options.noiseStd ** 2 + training.jitter) * noise());
+    const correction = solveTranspose(training.lower, solveLower(training.lower, residual));
+    return queryX.map((_, index) => prior[index] + cross[index].reduce((sum, value, column) => sum + value * correction[column], 0));
+  });
+}

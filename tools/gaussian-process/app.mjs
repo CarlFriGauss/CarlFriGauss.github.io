@@ -1,11 +1,14 @@
-import { posterior, DEFAULT_PARAMETERS, MAX_OBSERVATIONS, X_LIMIT, Y_LIMIT } from './gp.mjs';
+import { posterior, sampleFunctions, DEFAULT_PARAMETERS, MAX_OBSERVATIONS, X_LIMIT, Y_LIMIT } from './gp.mjs';
 
 const byId = id => document.getElementById(id);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const queryX = Array.from({ length: 321 }, (_, index) => -X_LIMIT + index / 32);
 const example = [{ x: -3, y: -0.8 }, { x: -1.5, y: 0.9 }, { x: 0, y: 0.3 }, { x: 1.7, y: -0.7 }, { x: 3.2, y: 0.8 }];
-let points = example.map(point => ({ ...point }));
+let points = [];
 let model = null;
+let samples = [];
+let sampleSeed = 42;
+let viewExtent = 3;
 let geometry = null;
 let pendingFrame = null;
 let calculationFailed = false;
@@ -44,10 +47,13 @@ function setStatus(message, error = false) {
 function draw(current) {
   if (!current) return;
   const width = Math.max(260, Math.round(byId('plot-container').getBoundingClientRect().width));
-  const height = width < 520 ? 340 : 400;
+  const height = width < 520 ? 340 : 460;
   const left = 58, right = width - 15, top = 18, bottom = height - 43;
-  const largest = Math.max(2.3, ...current.lower.map(Math.abs), ...current.upper.map(Math.abs), ...points.map(point => Math.abs(point.y)));
-  const extent = largest * 1.12;
+  // Keep coordinates fixed while clicking, so observations stay under the pointer.
+  // Expand only for a larger signal scale or a manually entered out-of-view point.
+  viewExtent = Math.min(Y_LIMIT, Math.max(viewExtent, current.parameters.signalStd * 3,
+    ...points.map(point => Math.abs(point.y) > viewExtent ? Math.abs(point.y) * 1.1 : 0)));
+  const extent = viewExtent;
   const x = value => left + (value + X_LIMIT) / (2 * X_LIMIT) * (right - left);
   const y = value => top + (extent - value) / (2 * extent) * (bottom - top);
   geometry = { width, height, left, right, top, bottom, extent };
@@ -58,7 +64,7 @@ function draw(current) {
   const fragment = document.createDocumentFragment();
   fragment.append(
     svgElement('title', { id: 'chart-title' }, `${points.length ? 'Posterior' : 'Prior'} of a Gaussian process`),
-    svgElement('desc', { id: 'chart-description' }, 'Teal line: mean of the latent function. Shading: its 95% pointwise interval. Dark points: observations. Equivalent numerical results and removal controls are in the tables below. Use the x and y fields to add points with a keyboard.'),
+    svgElement('desc', { id: 'chart-description' }, 'Click or tap this plot to add observations and condition the displayed functions. Thin curves: sampled functions. Thick teal line: mean of the latent function. Shading: its 95% pointwise interval. Dark points: observations. Use the x and y fields to add points with a keyboard; numerical results and removal controls are in the tables below.'),
   );
   const defs = svgElement('defs');
   const clip = svgElement('clipPath', { id: 'plot-area-clip' });
@@ -85,6 +91,11 @@ function draw(current) {
   };
   const upper = coordinates(current.upper), lower = coordinates(current.lower, true);
   marks.append(svgElement('path', { d: `M${upper.join(' L')} L${lower.join(' L')} Z`, class: 'interval' }));
+  if (byId('show-samples').checked) {
+    for (const [index, values] of samples.entries()) {
+      marks.append(svgElement('path', { d: `M${coordinates(values).join(' L')}`, class: `sample-function sample-color-${index % 4}` }));
+    }
+  }
   marks.append(svgElement('path', { d: `M${coordinates(current.mean).join(' L')}`, class: 'posterior-mean' }));
   for (const [index, point] of points.entries()) {
     const group = svgElement('g', { 'data-point-index': index });
@@ -119,6 +130,8 @@ function renderObservations() {
   byId('observation-count').textContent = `${points.length} / ${MAX_OBSERVATIONS} observations`;
   byId('add-point').disabled = points.length >= MAX_OBSERVATIONS;
   byId('plot-heading').textContent = points.length ? 'Posterior' : 'Prior';
+  byId('sample-state').textContent = points.length ? 'Samples from the posterior' : 'Samples from the prior';
+  byId('sample-key').hidden = !byId('show-samples').checked;
 }
 
 function renderPosteriorTable(current) {
@@ -143,6 +156,8 @@ function render() {
   renderObservations();
   try {
     model = posterior(points, queryX, options);
+    samples = byId('show-samples').checked
+      ? sampleFunctions(points, queryX, options, { count: Number(byId('sample-count').value), seed: sampleSeed }) : [];
     draw(model); renderPosteriorTable(model);
     const middle = 160;
     const state = points.length ? `Posterior from ${points.length} observation${points.length === 1 ? '' : 's'}.` : 'Prior with no observations.';
@@ -210,15 +225,29 @@ for (const [, control] of parameters) {
   });
 }
 
+byId('show-samples').addEventListener('change', () => {
+  byId('sample-count').disabled = !byId('show-samples').checked;
+  byId('resample').disabled = !byId('show-samples').checked;
+  render();
+});
+byId('sample-count').addEventListener('input', () => {
+  byId('sample-value').textContent = byId('sample-count').value;
+  if (pendingFrame === null) pendingFrame = requestAnimationFrame(() => { pendingFrame = null; render(); });
+});
+byId('resample').addEventListener('click', () => {
+  sampleSeed = (sampleSeed + 1) >>> 0;
+  if (render()) setStatus(`Drew new functions from the ${points.length ? 'posterior' : 'prior'}. Observations are unchanged.`);
+});
+
 function defaults() {
   for (const [name, control] of parameters) byId(control).value = String(DEFAULT_PARAMETERS[name]);
 }
 
 byId('reset').addEventListener('click', () => {
-  points = []; defaults(); render(); setStatus('Prior restored. All observations cleared; default parameters restored.');
+  points = []; viewExtent = 3; defaults(); render(); setStatus('Prior restored. All observations cleared; default parameters restored.');
 });
 byId('example').addEventListener('click', () => {
-  points = example.map(point => ({ ...point })); defaults(); render(); setStatus('Loaded five example observations and the default parameters.');
+  points = example.map(point => ({ ...point })); viewExtent = 3; defaults(); render(); setStatus('Loaded five example observations and the default parameters.');
 });
 
 new ResizeObserver(() => { if (model) draw(model); }).observe(byId('plot-container'));
