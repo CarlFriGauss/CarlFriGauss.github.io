@@ -5,7 +5,16 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "node scripts/check.mjs",
-    "test": "node --test tools/gaussian-process/gp.test.mjs"
+    "test": "node --test tools/gaussian-process/gp.test.mjs scripts/publishing.test.mjs",
+    "sync-content": "node scripts/sync-content.mjs"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "fast-xml-parser": "5.12.0",
+    "htmlparser2": "12.0.0",
+    "sanitize-html": "2.18.1",
+    "sharp": "0.35.5"
+  }
 }

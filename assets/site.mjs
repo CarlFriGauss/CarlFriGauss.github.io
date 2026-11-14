@@ -57,3 +57,49 @@ if (document.querySelector('#preview-plot')) {
     document.querySelectorAll('[data-model]').forEach(button => button.addEventListener('click', () => showPreview(button.dataset.model)));
   } catch { document.querySelector('.preview-controls')?.setAttribute('hidden', ''); }
 }
+
+function approvedVideo(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash) return null;
+    const params = [...url.searchParams.entries()];
+    if (url.hostname === 'www.blogger.com' && url.pathname === '/video.g') {
+      const token = url.searchParams.get('token') || '';
+      return params.length === 1 && /^[A-Za-z0-9_.~=-]{10,4096}$/.test(token) ? url : null;
+    }
+    if (url.hostname === 'www.youtube-nocookie.com' && /^\/embed\/[A-Za-z0-9_-]{11}$/.test(url.pathname)) {
+      if (!params.length) return url;
+      const start = url.searchParams.get('start') || '';
+      return params.length === 1 && /^\d{1,5}$/.test(start) && Number(start) <= 86400 ? url : null;
+    }
+  } catch { /* Unsupported media keeps its ordinary link. */ }
+  return null;
+}
+
+document.querySelectorAll('.article-body a.article-video').forEach(link => {
+  const source = approvedVideo(link.href);
+  if (!source) return;
+  const panel = document.createElement('div');
+  panel.className = 'video-consent';
+  const explanation = document.createElement('p');
+  const provider = source.hostname === 'www.blogger.com' ? 'Blogger' : 'YouTube';
+  explanation.textContent = `Loading this video shares the site’s domain with ${provider}, which may use cookies.`;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button button-secondary';
+  button.textContent = 'Load video';
+  button.addEventListener('click', () => {
+    const frame = document.createElement('iframe');
+    frame.src = source.href;
+    frame.title = `${provider} video`;
+    frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    frame.allow = 'fullscreen; picture-in-picture';
+    frame.allowFullscreen = true;
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
+    panel.className = 'video-frame';
+    panel.replaceChildren(frame);
+    frame.focus();
+  });
+  panel.append(explanation, button);
+  link.replaceWith(panel);
+});

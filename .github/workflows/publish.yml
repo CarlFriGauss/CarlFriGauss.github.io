@@ -1,0 +1,101 @@
+name: Publish website
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+  schedule:
+    - cron: '3-59/10 * * * *'
+    - cron: '17 3 * * *'
+
+permissions: {}
+
+concurrency:
+  group: website-publication
+  cancel-in-progress: false
+
+jobs:
+  keep-synchronization-active:
+    if: github.ref == 'refs/heads/master' && github.event_name == 'schedule' && github.event.schedule == '17 3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      actions: write
+    steps:
+      - name: Keep this scheduled workflow enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: gh api --method PUT "repos/$GH_REPOSITORY/actions/workflows/publish.yml/enable" --silent
+
+  build:
+    if: github.ref == 'refs/heads/master' && (github.event_name != 'schedule' || github.event.schedule != '17 3 * * *')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      deploy: ${{ steps.changed.outputs.deploy }}
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Test content handling and numerical engine
+        run: npm test
+      - name: Build published content
+        env:
+          PUBLISHING_PRIVACY_HASHES: ${{ secrets.PUBLISHING_PRIVACY_HASHES }}
+        run: npm run build
+      - name: Check the complete website
+        run: npm run check
+      - name: Check whether publication changed
+        id: changed
+        env:
+          PUBLICATION_EVENT: ${{ github.event_name }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from 'node:fs/promises';
+          const current = JSON.parse(await readFile('dist/publication.json', 'utf8'));
+          let changed = true;
+          if (process.env.PUBLICATION_EVENT === 'schedule') {
+            try {
+              const response = await fetch('https://carlfriedrichgauss.com/publication.json', { redirect: 'error', signal: AbortSignal.timeout(15000), headers: { 'Cache-Control': 'no-cache' } });
+              if (response.ok) {
+                const previous = await response.json();
+                changed = previous.revision !== current.revision || previous.sourceRevision !== current.sourceRevision;
+              }
+            } catch { /* A first or unavailable read must not suppress a valid publication. */ }
+          }
+          await appendFile(process.env.GITHUB_OUTPUT, `deploy=${changed}\n`);
+          console.log(changed ? 'A website update is ready.' : 'Published content is unchanged.');
+          NODE
+      - name: Package only public website output
+        if: steps.changed.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist
+          retention-days: 1
+
+  deploy:
+    if: needs.build.outputs.deploy == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish the verified website
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
