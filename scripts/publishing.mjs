@@ -48,11 +48,14 @@ function imageUrl(value) {
   return url;
 }
 
-function videoUrl(value) {
+function videoUrl(value, sourceHost) {
   const url = httpsUrl(value);
   if (url.hostname === 'www.blogger.com' && url.pathname === '/video.g') {
     const token = url.searchParams.get('token');
-    if (!token || !/^[A-Za-z0-9_.~=-]{10,4096}$/u.test(token) || [...url.searchParams.keys()].some(key => key !== 'token') || url.searchParams.getAll('token').length !== 1) throw error();
+    const origins = url.searchParams.getAll('origin');
+    const unknownParameter = [...url.searchParams.keys()].some(key => key !== 'token' && key !== 'origin');
+    if (!token || !/^[A-Za-z0-9_.~=-]{10,4096}$/u.test(token) || url.searchParams.getAll('token').length !== 1 || unknownParameter) throw error();
+    if (origins.length > 1 || origins.length === 1 && ![sourceHost, `https://${sourceHost}`].includes(origins[0])) throw error();
     return `https://www.blogger.com/video.g?token=${encodeURIComponent(token)}`;
   }
   const youtube = new Set(['www.youtube.com', 'youtube.com', 'www.youtube-nocookie.com', 'youtube-nocookie.com', 'youtu.be']);
@@ -156,9 +159,9 @@ function rasterFormat(bytes) {
   return bytes.subarray(4, 8).toString('ascii') === 'ftyp' && ['avif', 'avis'].includes(bytes.subarray(8, 12).toString('ascii'));
 }
 
-function sanitizeBody(content, imageSources) {
+function sanitizeBody(content, imageSources, sourceHost) {
   if (typeof content !== 'string' || !content.trim() || content.length > LIMIT.content) throw error();
-  const toVideo = value => ({ tagName: 'a', attribs: { href: videoUrl(value), class: 'article-video', rel: 'noopener noreferrer' }, text: 'Load video' });
+  const toVideo = value => ({ tagName: 'a', attribs: { href: videoUrl(value, sourceHost), class: 'article-video', rel: 'noopener noreferrer' }, text: 'Load video' });
   return sanitizeHtml(content, {
     allowedTags: ['p', 'br', 'h2', 'h3', 'h4', 'strong', 'b', 'em', 'i', 'u', 's', 'sub', 'sup', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'a', 'img', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'span', 'div'],
     allowedAttributes: { a: ['href', 'rel', 'class'], img: ['src', 'alt', 'loading', 'decoding'], th: ['scope', 'colspan', 'rowspan'], td: ['colspan', 'rowspan'] },
@@ -302,7 +305,7 @@ export async function syncPublished({ feedUrl: configuredUrl, outputDir, fetchIm
         const title = shortText(entry.title, 200);
         const author = shortText(list(entry.author || feed.author)[0]?.name, 120);
         if (entry.content?.['@_type'] && entry.content['@_type'] !== 'html') throw error();
-        const html = sanitizeBody(text(entry.content), imageSources);
+        const html = sanitizeBody(text(entry.content), imageSources, initial.hostname);
         const bodyText = plainText(html);
         if (!bodyText && !html.includes('<img ')) throw error();
         const summary = Array.from(bodyText).slice(0, 260).join('');

@@ -89,13 +89,15 @@ test('ordinary anchors cannot impersonate generated opt-in video controls', asyn
 });
 
 test('supports allowlisted Blogger and legacy YouTube object video sources', async t => {
-  const { articles } = await run(t, feed(entry({ html: '<iframe src="https://www.blogger.com/video.g?token=PublicVideoToken123"></iframe><object data="https://www.youtube.com/v/AbCdEfG1234"></object><object><param name="movie" value="https://www.youtube.com/v/ZyXwVuT9876"></object>' })));
+  const { articles } = await run(t, feed(entry({ html: '<iframe class="b-hbp-video b-uploaded" src="https://www.blogger.com/video.g?token=PublicVideoToken123&amp;origin=sample-journal.blogspot.com"></iframe><object data="https://www.youtube.com/v/AbCdEfG1234"></object><object><param name="movie" value="https://www.youtube.com/v/ZyXwVuT9876"></object>' })));
   assert.equal((articles[0].html.match(/class="article-video"/gu) || []).length, 3);
   assert.doesNotMatch(articles[0].html, /<(?:iframe|object|embed|param)\b/u);
+  assert.match(articles[0].html, /href="https:\/\/www\.blogger\.com\/video\.g\?token=PublicVideoToken123"/u);
+  assert.doesNotMatch(articles[0].html, /origin=/u);
 });
 
 test('rejects foreign and credentialed video embeds', async t => {
-  for (const source of ['https://evil.example/embed/one', 'https://user:password@www.youtube.com/embed/AbCdEfG1234', 'https://www.blogger.com/video.g?token=PublicVideoToken123&redirect=https://evil.example/']) {
+  for (const source of ['https://evil.example/embed/one', 'https://user:password@www.youtube.com/embed/AbCdEfG1234', 'https://www.blogger.com/video.g?token=PublicVideoToken123&redirect=https://evil.example/', 'https://www.blogger.com/video.g?token=PublicVideoToken123&origin=evil.example', 'https://www.blogger.com/video.g?token=PublicVideoToken123&origin=sample-journal.blogspot.com&origin=sample-journal.blogspot.com']) {
     await assert.rejects(run(t, feed(entry({ html: `<iframe src="${xml(source)}"></iframe>` }))), /could not be synchronized safely/u);
   }
 });
