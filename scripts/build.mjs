@@ -1,34 +1,10 @@
-import { cp, lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { pages } from '../content/pages.mjs';
 import { posterior } from '../tools/gaussian-process/gp.mjs';
-import { publishingPages } from '../content/publishing-pages.mjs';
-import { syncPublished } from './publishing.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const output = path.resolve(root, 'dist');
-if (output !== path.join(root, 'dist') || (await lstat(output).catch(() => null))?.isSymbolicLink()) throw new Error('Invalid build destination.');
-let config;
-let privacyHashes;
-try {
-  config = JSON.parse(await readFile(path.join(root, 'publishing.config.json'), 'utf8'));
-  privacyHashes = JSON.parse(process.env.PUBLISHING_PRIVACY_HASHES || '[]');
-  if (!/^https:\/\/www\.blogger\.com\/blog\/posts\/\d+$/.test(config.editorUrl)) throw new Error();
-  if (process.env.GITHUB_ACTIONS === 'true' && (!Array.isArray(privacyHashes) || !privacyHashes.length)) throw new Error();
-} catch {
-  throw new Error('The publishing configuration or privacy filter is unavailable.');
-}
-const articles = await syncPublished({ feedUrl: config.feedUrl, outputDir: path.join(root, '_publishing'), privacyHashes });
-await rm(output, { recursive: true, force: true });
-await mkdir(output, { recursive: true });
-await cp(path.join(root, 'assets'), path.join(output, 'assets'), { recursive: true });
-await cp(path.join(root, 'tools/gaussian-process'), path.join(output, 'tools/gaussian-process'), { recursive: true, filter: source => !source.endsWith('.test.mjs') && !source.endsWith('README.md') });
-await cp(path.join(root, 'GaussianProcess'), path.join(output, 'GaussianProcess'), { recursive: true });
-await cp(path.join(root, '_publishing/assets'), path.join(output, 'assets/published'), { recursive: true });
-await cp(path.join(root, 'CNAME'), path.join(output, 'CNAME'));
-await writeFile(path.join(output, '.nojekyll'), '');
 const origin = 'https://carlfriedrichgauss.com';
 const email = 'Carl_Fr_Gauss@proton.me';
 const escape = text => String(text).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -51,12 +27,9 @@ function footer() {
 
 function render(page) {
   const url = page.path === '404' ? `${origin}/404.html` : `${origin}/${page.path ? page.path + '/' : ''}`;
-  const pageTitle = `${escape(page.title)} — Carl Friedrich Gauss`;
-  const author = page.author ? `<meta name="author" content="${escape(page.author)}">` : '';
-  const videoPolicy = page.media ? 'frame-src https://www.blogger.com https://www.youtube-nocookie.com; ' : '';
   return `<!doctype html>
-<html lang="en" id="top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; ${videoPolicy}object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>${pageTitle}</title><meta name="description" content="${escape(page.description)}"><link rel="canonical" href="${url}"><meta property="og:type" content="${page.article ? 'article' : 'website'}">${author}<meta property="og:title" content="${pageTitle}"><meta property="og:description" content="${escape(page.description)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${origin}/assets/gauss-portrait.jpg"><meta name="twitter:card" content="summary"><link rel="alternate" type="application/rss+xml" title="Essays" href="/feed.xml"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css"><script type="module" src="/assets/site.mjs"></script>${page.noindex ? '<meta name="robots" content="noindex">' : ''}</head>
+<html lang="en" id="top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>${escape(page.title)} — Carl Friedrich Gauss</title><meta name="description" content="${escape(page.description)}"><link rel="canonical" href="${url}"><meta property="og:type" content="website"><meta property="og:title" content="${escape(page.title)} — Carl Friedrich Gauss"><meta property="og:description" content="${escape(page.description)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${origin}/assets/gauss-portrait.jpg"><meta name="twitter:card" content="summary"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css"><script type="module" src="/assets/site.mjs"></script>${page.noindex ? '<meta name="robots" content="noindex">' : ''}</head>
 <body><a class="skip-link" href="#main">Skip to content</a>${header(page.nav)}<main id="main">${page.body}</main>${footer()}</body></html>\n`;
 }
 
@@ -82,23 +55,13 @@ const home = {
 };
 
 const error = { path: '404', title: 'Page not found', description: 'Find your way back to the essays, academy, and mathematics explorer.', nav: '', noindex: true, body: '<section class="container page-hero"><p class="eyebrow">404 · An unexpected turn</p><h1>This page is<br><em>still a mystery.</em></h1><p class="lede">The address may have changed. The main paths are still here.</p><div class="hero-actions"><a class="button" href="/">Return home →</a><a class="text-link" href="/academy/">Explore the academy ↗</a></div></section>' };
-if (articles.length) home.body = home.body.replace('The first essays are being prepared. Writing will appear here under the name Carl Friedrich Gauss, alongside selected guest contributions.', 'Explore the essay collection: original writing under the name Carl Friedrich Gauss, alongside invited contributions.');
-const basePages = pages.filter(page => !['essays', 'contributors'].includes(page.path)).map(page => {
-  if (page.path === 'about' && articles.length) return { ...page, body: page.body.replace('The public site is at the beginning of that work. The first essays are in preparation, the academy is in development, and the free Gaussian process explorer is available now.', 'Explore the essay collection and the free Gaussian process explorer. The academy remains in development.') };
-  if (page.path === 'privacy') return { ...page, body: page.body.replace('Last updated 9 November 2026', 'Last updated 14 November 2026').replace('<h2 id="privacy-current">', '<h2>Writing desk and published media</h2><p>Google handles invited authors’ sign-in, drafts and uploads in Blogger. The website imports published text, public bylines and approved media.</p><p>Keep uploads to material intended for public release. People with an upload’s URL may be able to view it before you publish the post. Store private lessons and student information in protected storage.</p><p>The website serves imported images with embedded metadata removed. If you choose to load a video, Blogger or YouTube receives the site’s domain and connection information and may use cookies.</p><h2 id="privacy-current">') };
-  return page;
-});
-const all = [home, ...basePages, ...publishingPages(articles, config)];
+const all = [home, ...pages];
 for (const page of all) {
-  const dir = path.join(output, page.path);
+  const dir = path.join(root, page.path);
   await mkdir(dir, { recursive: true });
   await writeFile(path.join(dir, 'index.html'), render(page));
 }
-await writeFile(path.join(output, '404.html'), render(error));
-await writeFile(path.join(output, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
-await writeFile(path.join(output, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...all.filter(p => !p.noindex).map(p => `${origin}/${p.path ? p.path + '/' : ''}`), `${origin}/tools/gaussian-process/`].map(url => `<url><loc>${url}</loc></url>`).join('')}</urlset>\n`);
-const feedItems = articles.map(article => `<item><title>${escape(article.title)}</title><link>${origin}/essays/${escape(article.slug)}/</link><guid isPermaLink="true">${origin}/essays/${escape(article.slug)}/</guid><pubDate>${new Date(article.published).toUTCString()}</pubDate><description>${escape(article.summary)}</description></item>`).join('');
-await writeFile(path.join(output, 'feed.xml'), `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Carl Friedrich Gauss — Essays</title><link>${origin}/essays/</link><description>Independent essays and invited perspectives.</description><language>en</language>${feedItems}</channel></rss>\n`);
-const revision = createHash('sha256').update(JSON.stringify(articles)).digest('hex');
-await writeFile(path.join(output, 'publication.json'), JSON.stringify({ revision, articleCount: articles.length, sourceRevision: process.env.GITHUB_SHA || 'local', builtAt: new Date().toISOString() }) + '\n');
-console.log(`Built ${all.length} pages, 404, sitemap and RSS; ${articles.length} published articles.`);
+await writeFile(path.join(root, '404.html'), render(error));
+await writeFile(path.join(root, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
+await writeFile(path.join(root, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...all.map(p => `${origin}/${p.path ? p.path + '/' : ''}`), `${origin}/tools/gaussian-process/`].map(url => `<url><loc>${url}</loc></url>`).join('')}</urlset>\n`);
+console.log(`Built ${all.length} pages, 404 page, and sitemap.`);
