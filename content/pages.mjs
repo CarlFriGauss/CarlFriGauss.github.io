@@ -181,12 +181,12 @@ export const pages = [
   {
     path: 'contributors',
     title: 'For contributors',
-    description: 'Propose a guest essay for the independent writing project of Carl Friedrich Gauss. Guest publication is being planned.',
+    description: 'Propose a guest essay or sign in to the writing desk as an invited contributor.',
     nav: 'essays',
     body: `${pageHero('For contributors', 'Bring a thought of your own.', 'Guest essays are part of the plan: independent voices, clear arguments, and ideas that reward a closer look.')}
       <section class="container section split" aria-labelledby="contributors-proposal">
         <div><p class="eyebrow">Start a conversation</p><h2 id="contributors-proposal">An idea before a manuscript.</h2><p class="lede">If you would like to contribute, send a short proposal explaining the question you want to explore and the argument you hope to make.</p></div>
-        <div class="prose"><p>This collection is just beginning. No guest essays have been published, and there is no automated submission system.</p><p>Publication arrangements, editorial discussion, and your preferred public byline will be agreed directly before a contribution appears.</p><a class="button" href="${contact}?subject=Guest%20essay%20proposal">Propose an essay <span aria-hidden="true">↗</span></a></div>
+        <div class="prose"><p>Invited contributors write directly in the website’s writing desk. You can format an article, upload images and videos, save private drafts, and submit your work for review.</p><p>Publication arrangements, editorial discussion, and your preferred public byline will be agreed directly before a contribution appears. Only the site owner can publish an article.</p><a class="button" href="${contact}?subject=Guest%20essay%20proposal">Propose an essay <span aria-hidden="true">↗</span></a></div>
       </section>
       <section class="container section" aria-labelledby="contributors-include">
         <div class="section-head"><div><p class="eyebrow">A useful first note</p><h2 id="contributors-include">Give the idea a clear beginning.</h2></div></div>
@@ -231,20 +231,27 @@ export const pages = [
   {
     path: 'privacy',
     title: 'Privacy',
-    description: 'How this public static website handles browser preferences, the Gaussian process explorer, hosting requests, and email contact.',
+    description: 'How this website handles contributor accounts, drafts, uploaded media, browser preferences, and technical requests.',
     nav: 'about',
     body: `${pageHero('Privacy', 'A small site. A clear account.', 'This notice describes the public website as it works today. The planned academy will need a separate notice before collecting student information.')}
       <section class="container section course-layout" aria-labelledby="privacy-current">
         <div class="prose">
-          <p class="meta">Last updated 9 November 2026</p>
+          <p class="meta">Last updated 16 November 2026</p>
           <h2 id="privacy-current">The current public site</h2>
-          <p>This is a public static website. It has no visitor accounts, enrollment system, checkout, payment collection, or submission forms. The website's own code does not add analytics or set cookies.</p>
+          <p>Public pages can be read without an account. Invited contributors can sign in to write and submit articles. There is no public registration, student enrollment, checkout, or payment collection. The website does not add advertising or audience analytics.</p>
+          <h2>Contributor accounts and drafts</h2>
+          <p>Contributor accounts use an email address, a password managed by Supabase, a public byline, and an access role. Account sessions use essential secure cookies. The owner must also use an authenticator app. Draft text, revision information, submission status, and upload records are stored in the website’s Supabase database. Uploaded files and publication copies are stored in Cloudflare R2.</p>
+          <p>Contributors can access their own drafts; the owner can review all drafts and manage contributor access. Drafts and their attachments become public only when the owner publishes them. Account email addresses are not displayed with published articles. Choose a public byline and review text, captions, and media before publication. Downloaded or cached copies held by readers cannot be recalled by unpublishing.</p>
+          <h2>Saving and account email</h2>
+          <p>The writing desk saves recovery copies of unfinished edits in this browser’s local storage. A successful server save clears the corresponding recovery copy. Use your own device and clear site data before giving it to someone else. Resend processes the recipient address and message for invitations and password-reset emails. These account emails are not a mailing-list subscription.</p>
           <h2>Theme preference</h2>
           <p>If you choose a light or dark theme, the site can save that choice in this browser's local storage so your preferred appearance returns on a later visit. This is a display preference, not a visitor profile. You can remove it through your browser's site-data settings.</p>
           <h2>The Gaussian process explorer</h2>
           <p>The explorer calculates in your browser. Points you add are held in the page's memory and reset when the page reloads. The site's code does not send those points to a server or save them in browser storage.</p>
           <h2>Hosting and technical requests</h2>
-          <p>Your browser requests the pages and assets needed to display this site. GitHub, the hosting provider, may process technical request information, including your IP address. Its handling of that information is described in the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub General Privacy Statement</a>.</p>
+          <p>Cloudflare serves the website and uploaded files; Supabase provides accounts and the database; Resend delivers account emails. These providers process technical information needed to provide their services, such as network addresses and request information. Account endpoints also use a hash of the network address to limit repeated attempts. See the privacy notices for <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare</a>, <a href="https://supabase.com/privacy">Supabase</a>, and <a href="https://resend.com/legal/privacy-policy">Resend</a>.</p>
+          <h2>Keeping and removing information</h2>
+          <p>Drafts and uploaded files remain until removed by the owner; revoking contributor access does not delete their work. Contact the public address below to request an export, correction, or removal of your contributor information. Service backups or operational records may have separate retention periods. Keep your own original media files and copies of important writing.</p>
           <h2>Email contact</h2>
           <p>Email links ask your browser to open your configured mail application. Clicking a link does not send a message. If you choose to email the public address, your message and the details you include are handled through the email services involved. Please share only what is needed for your inquiry.</p>
           <h2>The future academy</h2>
@@ -255,7 +262,7 @@ export const pages = [
         <aside class="course-sidebar" aria-labelledby="privacy-glance">
           <p class="eyebrow">At a glance</p>
           <h2 id="privacy-glance">The essentials.</h2>
-          <ul class="principles"><li>Public pages without sign-in.</li><li>No analytics or cookies added by the site's code.</li><li>An optional theme preference saved in your browser.</li><li>Explorer points stay in page memory.</li><li>Hosting providers may process technical requests.</li></ul>
+          <ul class="principles"><li>Public pages without sign-in.</li><li>Essential session cookies for invited contributors.</li><li>Private drafts until the owner publishes them.</li><li>No advertising or audience analytics.</li><li>Explorer points stay in page memory.</li><li>Hosting providers process technical requests.</li></ul>
           <a class="text-link" href="/about/">About the project <span aria-hidden="true">→</span></a>
         </aside>
       </section>`,

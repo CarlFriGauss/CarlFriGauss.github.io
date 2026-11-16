@@ -4,3 +4,8 @@ node_modules/
 .env.*
 !.env.example
 *.log
+.dev.vars*
+.wrangler/
+dist/
+.editor-build/
+supabase/.temp/

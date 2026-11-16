@@ -5,7 +5,27 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "node scripts/check.mjs",
-    "test": "node --test tools/gaussian-process/gp.test.mjs"
+    "test": "node --test tools/gaussian-process/gp.test.mjs server/*.test.mjs",
+    "build:app": "node scripts/build-app.mjs",
+    "dev": "npm run build:app && wrangler dev",
+    "deploy": "npm run build:app && wrangler deploy"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.119.0",
+    "@tiptap/core": "3.34.0",
+    "@tiptap/extension-placeholder": "3.34.0",
+    "@tiptap/pm": "3.34.0",
+    "@tiptap/starter-kit": "3.34.0",
+    "hono": "4.13.18",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "esbuild": "0.28.2",
+    "wrangler": "4.162.0"
+  }
 }

@@ -8,7 +8,7 @@ const origin = 'https://carlfriedrichgauss.com';
 async function collect(dir) {
   const files = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
-    if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+    if (entry.name.startsWith('.') || ['node_modules', 'writing', 'dist'].includes(entry.name)) continue;
     const name = path.join(dir, entry.name);
     if (entry.isDirectory()) files.push(...await collect(name));
     else if (entry.name.endsWith('.html')) files.push(name);
