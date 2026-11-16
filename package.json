@@ -8,7 +8,8 @@
     "test": "node --test tools/gaussian-process/gp.test.mjs server/*.test.mjs",
     "build:app": "node scripts/build-app.mjs",
     "dev": "npm run build:app && wrangler dev",
-    "deploy": "npm run build:app && wrangler deploy"
+    "deploy": "npm run build:app && wrangler deploy",
+    "deploy:www": "wrangler deploy --config wrangler-www.jsonc"
   },
   "engines": {
     "node": ">=22"

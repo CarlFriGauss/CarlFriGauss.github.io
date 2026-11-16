@@ -7,6 +7,11 @@ import { mediaRoutes, mediaKey, PART_SIZE } from './media.mjs';
 const app = new Hono();
 const policy = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 app.use('*', async (context, next) => {
+  const requestUrl = new URL(context.req.url);
+  if (requestUrl.hostname === 'www.carlfriedrichgauss.com') {
+    requestUrl.hostname = 'carlfriedrichgauss.com';
+    return context.redirect(requestUrl.toString(), 308);
+  }
   context.header('Content-Security-Policy', policy);
   context.header('X-Content-Type-Options', 'nosniff');
   context.header('Referrer-Policy', 'no-referrer');
@@ -29,7 +34,7 @@ app.use('*', async (context, next) => {
     context.header('Cache-Control', 'no-store');
     context.header('X-Robots-Tag', 'noindex, nofollow');
   }
-  if (context.env.PREVIEW_MODE === 'true') context.header('X-Robots-Tag', 'noindex, nofollow');
+  if (context.env.PREVIEW_MODE === 'true' || requestUrl.hostname === 'preview.carlfriedrichgauss.com') context.header('X-Robots-Tag', 'noindex, nofollow');
 });
 app.use('/api/*', bodyLimit({ maxSize: PART_SIZE + 1024, onError: context => context.json({ error: 'Request too large.' }, 413) }));
 app.onError((error, context) => context.json({ error: error instanceof RequestError ? error.message : 'The operation could not finish. Keep this page open and retry.' }, error instanceof RequestError ? error.status : 503));

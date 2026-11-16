@@ -6,6 +6,12 @@ const articleId = '00000000-0000-4000-8000-000000000001';
 const mediaId = '00000000-0000-4000-8000-000000000002';
 const origin = 'https://example.test';
 
+test('www requests redirect to the canonical host before account access', async () => {
+  const response = await app.request('https://www.carlfriedrichgauss.com/write/?from=home', {}, {});
+  assert.equal(response.status, 308);
+  assert.equal(response.headers.get('location'), 'https://carlfriedrichgauss.com/write/?from=home');
+});
+
 test('cross-site writes and requests without an origin fail before accessing services', async () => {
   for (const headers of [{}, { origin: 'https://other.test' }]) {
     const response = await app.request(`${origin}/api/articles`, { method: 'POST', headers }, {});
