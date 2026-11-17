@@ -18,6 +18,22 @@ themeButton?.addEventListener('click', () => {
 });
 darkMedia.addEventListener('change', () => { if (!preference) applyTheme(darkMedia.matches ? 'dark' : 'light'); });
 
+const accountLinks = document.querySelectorAll('[data-account-link]');
+async function updateAccountLinks() {
+  if (!accountLinks.length) return;
+  let label = 'Sign in';
+  try {
+    const response = await fetch('/api/session', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    if (response.ok) {
+      const { member } = await response.json();
+      if (member?.active && ['owner', 'contributor'].includes(member.role)) label = 'Writing desk';
+    }
+  } catch { /* Sign in remains a working link when the account service is unavailable. */ }
+  accountLinks.forEach(link => { link.textContent = label; });
+}
+void updateAccountLinks();
+window.addEventListener('pageshow', event => { if (event.persisted) void updateAccountLinks(); });
+
 const menu = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('.site-nav');
 function closeMenu() { menu?.setAttribute('aria-expanded', 'false'); menu?.setAttribute('aria-label', 'Open navigation'); navigation?.classList.remove('is-open'); }

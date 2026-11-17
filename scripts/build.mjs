@@ -17,7 +17,7 @@ function header(active) {
     <a class="brand" href="/" aria-label="Carl Friedrich Gauss — Home"><img src="/assets/gauss-portrait.jpg" alt="" width="52" height="52"><span>Carl Friedrich Gauss<span class="brand-subtitle">Independent thought · Mathematics</span></span></a>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation"><span></span><span></span></button>
     <nav class="site-nav" id="site-nav" aria-label="Main navigation">${navItems.map(([label, url, name]) => `<a href="${url}"${active === name ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
-    <div class="header-actions"><button class="theme-toggle" type="button" aria-label="Switch colour theme" title="Switch colour theme">${themeIcon}</button><a class="contact-link" href="mailto:${email}">Get in touch ${arrow}</a></div>
+    <div class="header-actions"><button class="theme-toggle" type="button" aria-label="Switch colour theme" title="Switch colour theme">${themeIcon}</button><a class="account-link" data-account-link href="/write/">Sign in</a></div>
   </div></header>`;
 }
 
@@ -28,7 +28,7 @@ function footer() {
 function render(page) {
   const url = page.path === '404' ? `${origin}/404.html` : `${origin}/${page.path ? page.path + '/' : ''}`;
   return `<!doctype html>
-<html lang="en" id="top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<html lang="en" id="top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>${escape(page.title)} — Carl Friedrich Gauss</title><meta name="description" content="${escape(page.description)}"><link rel="canonical" href="${url}"><meta property="og:type" content="website"><meta property="og:title" content="${escape(page.title)} — Carl Friedrich Gauss"><meta property="og:description" content="${escape(page.description)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${origin}/assets/gauss-portrait.jpg"><meta name="twitter:card" content="summary"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css"><script type="module" src="/assets/site.mjs"></script>${page.noindex ? '<meta name="robots" content="noindex">' : ''}</head>
 <body><a class="skip-link" href="#main">Skip to content</a>${header(page.nav)}<main id="main">${page.body}</main>${footer()}</body></html>\n`;
 }

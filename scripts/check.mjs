@@ -40,6 +40,8 @@ for (const [file, text] of documents) {
     assert(local === root || local.startsWith(root + path.sep), 'Link escaped the website');
     let target = local;
     if (url.pathname.endsWith('/')) target = path.join(target, 'index.html');
+    // The Worker serves this route from the writing source when building the app.
+    if (url.pathname === '/write/') target = path.join(root, 'writing/index.html');
     assert((await stat(target).catch(() => null))?.isFile(), `Broken local target in ${relative}: ${value}`);
     if (url.hash) {
       const content = documents.get(target) || await readFile(target, 'utf8');
